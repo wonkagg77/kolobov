@@ -1,63 +1,68 @@
 import json
 import os
-from datetime import datetime
 import tkinter as tk
 from tkinter import ttk, messagebox
 
-DATA_FILE = "training_data.json"
+DATA_FILE = "books.json"
 
-class TrainingPlanner:
+class BookTracker:
     def __init__(self, root):
         self.root = root
-        self.root.title("Training Planner")
-        self.root.geometry("800x500")
+        self.root.title("Book Tracker")
+        self.root.geometry("850x550")
 
-        # Данные тренировок
-        self.trainings = []
-        self.filtered_trainings = []
+        # Данные о книгах
+        self.books = []          # все книги
+        self.filtered_books = [] # отфильтрованные
 
-        # Поля ввода
+        # Создание интерфейса
         self.create_input_frame()
         self.create_table()
         self.create_filter_frame()
 
-        # Загрузка данных при старте
+        # Загрузка сохранённых данных
         self.load_data()
 
     def create_input_frame(self):
-        frame = tk.LabelFrame(self.root, text="Добавить тренировку", padx=5, pady=5)
+        """Форма для добавления новой книги"""
+        frame = tk.LabelFrame(self.root, text="Добавить книгу", padx=5, pady=5)
         frame.pack(fill="x", padx=10, pady=5)
 
-        # Дата
-        tk.Label(frame, text="Дата (ГГГГ-ММ-ДД):").grid(row=0, column=0, sticky="e")
-        self.date_entry = tk.Entry(frame, width=15)
-        self.date_entry.grid(row=0, column=1, padx=5)
-        self.date_entry.insert(0, datetime.now().strftime("%Y-%m-%d"))
+        # Название
+        tk.Label(frame, text="Название:").grid(row=0, column=0, sticky="e", padx=2)
+        self.title_entry = tk.Entry(frame, width=25)
+        self.title_entry.grid(row=0, column=1, padx=5, pady=2)
 
-        # Тип тренировки
-        tk.Label(frame, text="Тип тренировки:").grid(row=0, column=2, sticky="e")
-        self.type_entry = ttk.Combobox(frame, values=["Бег", "Велосипед", "Плавание", "Йога", "Силовая"], width=15)
-        self.type_entry.grid(row=0, column=3, padx=5)
-        self.type_entry.set("Бег")
+        # Автор
+        tk.Label(frame, text="Автор:").grid(row=0, column=2, sticky="e", padx=2)
+        self.author_entry = tk.Entry(frame, width=20)
+        self.author_entry.grid(row=0, column=3, padx=5, pady=2)
 
-        # Длительность
-        tk.Label(frame, text="Длительность (мин):").grid(row=0, column=4, sticky="e")
-        self.duration_entry = tk.Entry(frame, width=10)
-        self.duration_entry.grid(row=0, column=5, padx=5)
+        # Жанр
+        tk.Label(frame, text="Жанр:").grid(row=0, column=4, sticky="e", padx=2)
+        self.genre_entry = tk.Entry(frame, width=15)
+        self.genre_entry.grid(row=0, column=5, padx=5, pady=2)
+
+        # Количество страниц
+        tk.Label(frame, text="Страниц:").grid(row=0, column=6, sticky="e", padx=2)
+        self.pages_entry = tk.Entry(frame, width=8)
+        self.pages_entry.grid(row=0, column=7, padx=5, pady=2)
 
         # Кнопка добавления
-        btn_add = tk.Button(frame, text="Добавить тренировку", command=self.add_training)
-        btn_add.grid(row=0, column=6, padx=10)
+        btn_add = tk.Button(frame, text="Добавить книгу", command=self.add_book)
+        btn_add.grid(row=0, column=8, padx=10)
 
     def create_table(self):
-        # Таблица для отображения тренировок
-        self.tree = ttk.Treeview(self.root, columns=("date", "type", "duration"), show="headings")
-        self.tree.heading("date", text="Дата")
-        self.tree.heading("type", text="Тип")
-        self.tree.heading("duration", text="Длительность (мин)")
-        self.tree.column("date", width=120)
-        self.tree.column("type", width=150)
-        self.tree.column("duration", width=120)
+        """Таблица для отображения списка книг"""
+        self.tree = ttk.Treeview(self.root, columns=("title", "author", "genre", "pages"), show="headings")
+        self.tree.heading("title", text="Название")
+        self.tree.heading("author", text="Автор")
+        self.tree.heading("genre", text="Жанр")
+        self.tree.heading("pages", text="Страниц")
+        self.tree.column("title", width=200)
+        self.tree.column("author", width=150)
+        self.tree.column("genre", width=120)
+        self.tree.column("pages", width=80)
 
         scrollbar = ttk.Scrollbar(self.root, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=scrollbar.set)
@@ -65,125 +70,125 @@ class TrainingPlanner:
         scrollbar.pack(side="right", fill="y", padx=(0, 10), pady=5)
 
     def create_filter_frame(self):
+        """Панель фильтрации"""
         frame = tk.LabelFrame(self.root, text="Фильтрация", padx=5, pady=5)
         frame.pack(fill="x", padx=10, pady=5)
 
-        # Фильтр по типу
-        tk.Label(frame, text="Тип:").grid(row=0, column=0, sticky="e")
-        self.filter_type = ttk.Combobox(frame, values=["Все"] + ["Бег", "Велосипед", "Плавание", "Йога", "Силовая"], width=15)
-        self.filter_type.grid(row=0, column=1, padx=5)
-        self.filter_type.set("Все")
+        # Фильтр по жанру
+        tk.Label(frame, text="Жанр:").grid(row=0, column=0, sticky="e")
+        self.filter_genre = tk.Entry(frame, width=15)
+        self.filter_genre.grid(row=0, column=1, padx=5)
 
-        # Фильтр по дате
-        tk.Label(frame, text="Дата (ГГГГ-ММ-ДД):").grid(row=0, column=2, sticky="e")
-        self.filter_date = tk.Entry(frame, width=15)
-        self.filter_date.grid(row=0, column=3, padx=5)
+        # Фильтр по страницам (> указанного числа)
+        tk.Label(frame, text="Страниц больше:").grid(row=0, column=2, sticky="e")
+        self.filter_pages = tk.Entry(frame, width=8)
+        self.filter_pages.grid(row=0, column=3, padx=5)
 
-        # Кнопка фильтрации
+        # Кнопки
         btn_filter = tk.Button(frame, text="Применить фильтр", command=self.apply_filter)
         btn_filter.grid(row=0, column=4, padx=10)
 
-        # Кнопка сброса фильтра
         btn_reset = tk.Button(frame, text="Сбросить фильтр", command=self.reset_filter)
         btn_reset.grid(row=0, column=5, padx=10)
 
-    def validate_date(self, date_str):
-        try:
-            datetime.strptime(date_str, "%Y-%m-%d")
-            return True
-        except ValueError:
+    def validate_fields(self, title, author, genre, pages_str):
+        """Проверка корректности ввода"""
+        if not title or not author or not genre or not pages_str:
+            messagebox.showerror("Ошибка", "Все поля должны быть заполнены!")
             return False
-
-    def validate_duration(self, duration_str):
         try:
-            duration = float(duration_str)
-            return duration > 0
+            pages = int(pages_str)
+            if pages <= 0:
+                messagebox.showerror("Ошибка", "Количество страниц должно быть положительным числом!")
+                return False
         except ValueError:
+            messagebox.showerror("Ошибка", "Количество страниц должно быть целым числом!")
             return False
+        return True
 
-    def add_training(self):
-        date = self.date_entry.get().strip()
-        training_type = self.type_entry.get().strip()
-        duration = self.duration_entry.get().strip()
+    def add_book(self):
+        """Добавление новой книги"""
+        title = self.title_entry.get().strip()
+        author = self.author_entry.get().strip()
+        genre = self.genre_entry.get().strip()
+        pages_str = self.pages_entry.get().strip()
 
-        if not date or not training_type or not duration:
-            messagebox.showerror("Ошибка", "Заполните все поля!")
+        if not self.validate_fields(title, author, genre, pages_str):
             return
 
-        if not self.validate_date(date):
-            messagebox.showerror("Ошибка", "Неверный формат даты! Используйте ГГГГ-ММ-ДД")
-            return
-
-        if not self.validate_duration(duration):
-            messagebox.showerror("Ошибка", "Длительность должна быть положительным числом!")
-            return
-
-        # Добавление в список
-        new_entry = {
-            "date": date,
-            "type": training_type,
-            "duration": float(duration)
+        pages = int(pages_str)
+        book = {
+            "title": title,
+            "author": author,
+            "genre": genre,
+            "pages": pages
         }
-        self.trainings.append(new_entry)
+        self.books.append(book)
         self.save_data()
-        self.apply_filter()  # обновить отображение с учётом текущего фильтра
+        self.apply_filter()   # обновить отображение с учётом фильтра
         self.clear_input_fields()
 
     def clear_input_fields(self):
-        self.date_entry.delete(0, tk.END)
-        self.date_entry.insert(0, datetime.now().strftime("%Y-%m-%d"))
-        self.type_entry.set("Бег")
-        self.duration_entry.delete(0, tk.END)
+        """Очистка полей ввода после добавления"""
+        self.title_entry.delete(0, tk.END)
+        self.author_entry.delete(0, tk.END)
+        self.genre_entry.delete(0, tk.END)
+        self.pages_entry.delete(0, tk.END)
 
     def apply_filter(self):
-        filter_type = self.filter_type.get()
-        filter_date = self.filter_date.get().strip()
+        """Фильтрация книг по жанру и/или количеству страниц"""
+        genre_filter = self.filter_genre.get().strip()
+        pages_filter_str = self.filter_pages.get().strip()
 
-        filtered = self.trainings[:]
+        filtered = self.books[:]
 
-        if filter_type != "Все":
-            filtered = [t for t in filtered if t["type"] == filter_type]
+        # Фильтр по жанру (без учёта регистра)
+        if genre_filter:
+            filtered = [b for b in filtered if genre_filter.lower() in b["genre"].lower()]
 
-        if filter_date:
-            if not self.validate_date(filter_date):
-                messagebox.showerror("Ошибка", "Неверный формат даты для фильтра!")
+        # Фильтр по страницам (больше указанного числа)
+        if pages_filter_str:
+            try:
+                pages_limit = int(pages_filter_str)
+                filtered = [b for b in filtered if b["pages"] > pages_limit]
+            except ValueError:
+                messagebox.showerror("Ошибка", "Фильтр по страницам должен быть целым числом!")
                 return
-            filtered = [t for t in filtered if t["date"] == filter_date]
 
-        self.filtered_trainings = filtered
+        self.filtered_books = filtered
         self.update_table()
 
     def reset_filter(self):
-        self.filter_type.set("Все")
-        self.filter_date.delete(0, tk.END)
+        """Сброс фильтров"""
+        self.filter_genre.delete(0, tk.END)
+        self.filter_pages.delete(0, tk.END)
         self.apply_filter()
 
     def update_table(self):
-        # Очистить таблицу
+        """Обновление таблицы отфильтрованными данными"""
         for row in self.tree.get_children():
             self.tree.delete(row)
 
-        # Заполнить отфильтрованными данными
-        for training in self.filtered_trainings:
-            self.tree.insert("", "end", values=(training["date"], training["type"], training["duration"]))
+        for book in self.filtered_books:
+            self.tree.insert("", "end", values=(book["title"], book["author"], book["genre"], book["pages"]))
 
     def save_data(self):
+        """Сохранение всех книг в JSON-файл"""
         with open(DATA_FILE, "w", encoding="utf-8") as f:
-            json.dump(self.trainings, f, indent=4, ensure_ascii=False)
+            json.dump(self.books, f, indent=4, ensure_ascii=False)
 
     def load_data(self):
+        """Загрузка данных из JSON-файла при запуске"""
         if os.path.exists(DATA_FILE):
             try:
                 with open(DATA_FILE, "r", encoding="utf-8") as f:
-                    self.trainings = json.load(f)
-                self.apply_filter()  # отобразить загруженные данные
+                    self.books = json.load(f)
+                self.apply_filter()
             except json.JSONDecodeError:
                 messagebox.showerror("Ошибка", "Файл данных повреждён. Будет создан новый.")
-                self.trainings = []
-        else:
-            self.trainings = []
+                self.books = []
 
 if __name__ == "__main__":
     root = tk.Tk()
-    app = TrainingPlanner(root)
+    app = BookTracker(root)
     root.mainloop()
